@@ -1,0 +1,4 @@
+import { describe, expect, it } from "vitest";
+import { canConfirm, stockState } from "../../lib/domain/inventory";
+import { csvWithBom, documentSchema } from "../../lib/validation/documents";
+describe("inventory rules", () => { it("classifies stock", () => { expect(stockState(0, 5)).toBe("out"); expect(stockState(5, 5)).toBe("low"); expect(stockState(6, 5)).toBe("ok"); }); it("restricts confirmation", () => { expect(canConfirm("admin")).toBe(true); expect(canConfirm("warehouse_staff")).toBe(false); }); it("rejects empty documents", () => { expect(documentSchema.safeParse({ warehouseId: crypto.randomUUID(), occurredAt: new Date().toISOString(), items: [] }).success).toBe(false); }); it("writes BOM CSV", () => { expect(csvWithBom(["Sản phẩm"], [["Mì ăn liền"]]).startsWith("\uFEFF")).toBe(true); }); });

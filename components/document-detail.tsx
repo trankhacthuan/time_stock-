@@ -1,0 +1,16 @@
+import { notFound } from "next/navigation";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { cancelDocument, confirmDocument } from "@/server/actions";
+
+export async function DocumentDetail({id,kind,message}:{id:string;kind:"receipt"|"issue";message?:{error?:string;created?:string;confirmed?:string;cancelled?:string}}){
+  const supabase=await createSupabaseServerClient(); const table=kind==="receipt"?"stock_receipts":"stock_issues"; const items=kind==="receipt"?"stock_receipt_items(quantity,unit_cost,products(sku,name,unit))":"stock_issue_items(quantity,products(sku,name,unit))";
+  const {data}=supabase?await supabase.from(table).select(`id,code,status,occurred_at,note,cancellation_reason,warehouses(name),${items}`).eq("id",id).single():{data:null}; if(!data)notFound();
+  const row=data as unknown as Record<string,unknown>; const lines=(row[kind==="receipt"?"stock_receipt_items":"stock_issue_items"]??[]) as Array<{quantity:number;unit_cost?:number;products:{sku:string;name:string;unit:string}|null}>; const warehouse=row.warehouses as {name:string}|null;
+  return <><header className="pageHead"><div><p className="eyebrow">Chi tiết chứng từ</p><h1>{String(row.code)}</h1><p className="muted">{warehouse?.name} · {new Date(String(row.occurred_at)).toLocaleString("vi-VN",{timeZone:"Asia/Ho_Chi_Minh"})}</p></div><span className={`badge ${String(row.status)}`}>{row.status==="draft"?"Nháp":row.status==="confirmed"?"Đã xác nhận":"Đã hủy"}</span></header>
+    {(message?.created||message?.confirmed||message?.cancelled)&&<p className="alert success" role="status">{message.confirmed?"Đã xác nhận và cập nhật tồn kho.":message.cancelled?"Đã đảo phiếu và ghi bút toán hoàn tác.":"Đã lưu phiếu nháp."}</p>}{message?.error&&<p className="alert danger" role="alert">Không thể thực hiện. Kiểm tra quyền, trạng thái phiếu và số lượng tồn.</p>}
+    {row.note&&<p className="notice">Ghi chú: {String(row.note)}</p>}{row.cancellation_reason&&<p className="alert danger">Lý do hủy: {String(row.cancellation_reason)}</p>}
+    <div className="tableWrap"><table className="table"><thead><tr><th>SKU</th><th>Sản phẩm</th><th>Số lượng</th>{kind==="receipt"&&<th>Đơn giá</th>}</tr></thead><tbody>{lines.map((line,index)=><tr key={index}><td>{line.products?.sku}</td><td>{line.products?.name}</td><td>{line.quantity} {line.products?.unit}</td>{kind==="receipt"&&<td>{Number(line.unit_cost).toLocaleString("vi-VN")} ₫</td>}</tr>)}</tbody></table></div>
+    {row.status==="draft"&&<form className="panel actionPanel" action={confirmDocument}><input type="hidden" name="id" value={id}/><input type="hidden" name="kind" value={kind}/><div><h2>Xác nhận phiếu</h2><p className="muted">Thao tác này cập nhật tồn và không thể sửa phiếu sau đó.</p></div><button className="button">Xác nhận và cập nhật tồn</button></form>}
+    {row.status==="confirmed"&&<form className="panel actionPanel" action={cancelDocument}><input type="hidden" name="id" value={id}/><input type="hidden" name="kind" value={kind}/><label className="field">Lý do đảo phiếu<input className="input" name="reason" minLength={3} maxLength={300} required/></label><button className="button dangerButton">Đảo phiếu</button></form>}
+  </>;
+}

@@ -1,0 +1,1 @@
+export default function Loading(){return <section className="panel" aria-live="polite"><p className="eyebrow">Đang tải</p><h1>Đang lấy dữ liệu kho…</h1><p className="muted">Vui lòng chờ trong giây lát.</p></section>}

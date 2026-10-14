@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.pnpm-store/
+coverage/
+test-results/
+playwright-report/
+.env.local
+.env.*.local
+!.env.example
+*.log
+*.tsbuildinfo
+harness.db
+scripts/bin/
+supabase/.temp/
